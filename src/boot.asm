@@ -15,24 +15,17 @@ mov sp, 0x7c00
 mov si, booting
 call print
 
-xchg bx, bx; bochs 魔数断点
-
 ; 读取硬盘第一扇区内容到内存
 mov edi, 0x1000; 读取的目标内存
-mov ecx, 0; 起始扇区
-mov bl, 1; 读取的扇区数量
+mov ecx, 2; 起始扇区
+mov bl, 4; 读取的扇区数量
 
 call read_disk
 
-xchg bx, bx; bochs 魔数断点
+cmp word [0x1000], 0x55aa
+jnz error
 
-mov edi, 0x1000; 写的目标内存
-mov ecx, 1; 写到第二个扇区
-mov bl, 1;
-
-call write_disk
-
-xchg bx, bx; bochs 魔数断点
+jmp 0:0x1002;代码段 打印字符串
 
 ; 阻塞
 jmp $
@@ -181,18 +174,26 @@ write_disk:
 
 print:
     mov ah, 0x0e
-    .next
-        mov al, [si]
-        cmp al, 0
-        jz .done
-        int 0x10
-        inc si
-        jmp .next
-    .done
+.next:
+    mov al, [si]
+    cmp al, 0
+    jz .done
+    int 0x10
+    inc si
+    jmp .next
+.done:
     ret
 
 booting:
     db "Booting Onix...", 10, 13, 0 ; \n\r
+
+error:
+    mov si, .msg
+    call print
+    hlt; 让cpu停止
+    jmp $
+    .msg:
+        db "Booting Error!!!", 10, 13, 0
 
 times 510-($-$$) db 0
 db 0x55, 0xaa
